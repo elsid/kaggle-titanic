@@ -7,28 +7,12 @@ import yaml
 from argparse import ArgumentParser, FileType
 from collections import Counter
 from functools import reduce
-from itertools import permutations
 from numpy import unique
-from operator import itemgetter
 from pandas import read_csv
 from sklearn.ensemble import AdaBoostClassifier
 from sys import stdin, stdout
 
 NAME_PATTERN = re.compile(r'^[^,]+, (?P<title>\w+)')
-
-BASE_PERCENTAGES_COLUMNS = (
-    'Pclass',
-    'Sex',
-    'SibSp',
-    'Parch',
-    'Title',
-    'Embarked',
-)
-
-
-def print_table(dictionary):
-    for k, v in sorted(dictionary.items(), key=itemgetter(1)):
-        print('{:>30} {:>20}'.format(str(k), v))
 
 
 def fill_age(data, train_data=None):
@@ -114,12 +98,16 @@ def add_title(data):
     data['Title'] = [parse_title(name) for name in data.Name.values]
 
 
-def prepare_train_data(data, percentages_columns):
+def fill_train_data(data):
     add_title(data)
     fill_age(data)
     fill_embarked(data)
     fill_pclass(data)
     fill_fare(data)
+
+
+def prepare_train_data(data, percentages_columns):
+    fill_train_data(data)
     add_percentages(data, data, percentages_columns)
 
 
@@ -163,23 +151,6 @@ def get_prediction_precision(test_data, sample_data):
             / len(test_data.Survived.values))
 
 
-def percentages(data, max_count):
-    add_title(data)
-    fill_age(data)
-    fill_embarked(data)
-    fill_pclass(data)
-    fill_fare(data)
-
-    def generate_columns():
-        for n in range(1, max_count + 1):
-            for column_ in permutations(BASE_PERCENTAGES_COLUMNS, n):
-                yield column_
-
-    for column in generate_columns():
-        print(column)
-        print_table(survivors_percentage(data, column))
-
-
 class Config(object):
     def __init__(self, data):
         self.used_columns = (data['used_columns'] if 'used_columns' in data
@@ -195,30 +166,26 @@ def parse_config(stream):
 
 def parse_args():
     parser = ArgumentParser()
+    parser.add_argument('config', type=FileType('r'))
     parser.add_argument('train', type=FileType('r'))
     parser.add_argument('test', type=FileType('r'), nargs='?', default=stdin)
     parser.add_argument('-s', '--sample', type=FileType('r'))
-    parser.add_argument('-p', '--print_percentages', type=int)
-    parser.add_argument('-c', '--config', type=FileType('r'))
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     train_data = read_csv(args.train, header=0)
-    if args.print_percentages:
-        percentages(train_data, args.print_percentages)
+    config = parse_config(args.config)
+    test_data = read_csv(args.test, header=0)
+    predict(test_data, train_data, config.percentages_columns,
+            config.used_columns)
+    if args.sample:
+        sample_data = read_csv(args.sample, header=0)
+        print(get_prediction_precision(test_data, sample_data))
     else:
-        config = parse_config(args.config)
-        test_data = read_csv(args.test, header=0)
-        predict(test_data, train_data, config.percentages_columns,
-                config.used_columns)
-        if args.sample:
-            sample_data = read_csv(args.sample, header=0)
-            print(get_prediction_precision(test_data, sample_data))
-        else:
-            test_data.set_index('PassengerId').to_csv(stdout,
-                                                      columns=('Survived',))
+        test_data.set_index('PassengerId').to_csv(stdout,
+                                                  columns=('Survived',))
 
 
 if __name__ == '__main__':
