@@ -1,0 +1,6 @@
+---
+- Pclass
+- Sex
+- [Sex, Pclass]
+- [Sex, SibSp, Parch]
+- [Sex, Title]
