@@ -157,8 +157,8 @@ def prepare_test_data(data, train_data, percentages_columns):
         data.drop('Survived', axis=1, inplace=True)
 
 
-def drop_unused(data):
-    return data.drop(frozenset(COLUMNS), axis=1)
+def drop_unused(data, used_columns):
+    return data.drop(frozenset(COLUMNS) - frozenset(used_columns), axis=1)
 
 
 def classify(test_values, train_values):
@@ -167,11 +167,12 @@ def classify(test_values, train_values):
     return classifier.predict(test_values).astype(int)
 
 
-def predict(test_data, train_data, percentages_columns):
+def predict(test_data, train_data, percentages_columns, used_columns):
     prepare_train_data(train_data, percentages_columns)
     prepare_test_data(test_data, train_data, percentages_columns)
-    test_data['Survived'] = classify(drop_unused(test_data).values,
-                                     drop_unused(train_data).values)
+    test_data['Survived'] = classify(
+        drop_unused(test_data, used_columns).values,
+        drop_unused(train_data, used_columns).values)
 
 
 def get_prediction_precision(test_data, sample_data):
@@ -201,6 +202,8 @@ def parse_args():
     parser.add_argument('-s', '--sample', type=FileType('r'))
     parser.add_argument('-p', '--print_percentages', type=int)
     parser.add_argument('-c', '--percentages_columns', type=FileType('r'))
+    parser.add_argument('-u', '--use_column', dest='used_columns', type=str,
+                        nargs='+', default=tuple())
     return parser.parse_args()
 
 
@@ -213,7 +216,7 @@ def main():
         percentages(train_data, args.print_percentages, percentages_columns)
     else:
         test_data = read_csv(args.test, header=0)
-        predict(test_data, train_data, percentages_columns)
+        predict(test_data, train_data, percentages_columns, args.used_columns)
         if args.sample:
             sample_data = read_csv(args.sample, header=0)
             print(get_prediction_precision(test_data, sample_data))
