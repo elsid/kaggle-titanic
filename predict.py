@@ -16,7 +16,7 @@ from sys import stdin, stdout
 
 NAME_PATTERN = re.compile(r'^[^,]+, (?P<title>\w+)')
 
-BASE_UNUSED_COLUMNS = (
+COLUMNS = (
     'Age',
     'Cabin',
     'Embarked',
@@ -157,6 +157,10 @@ def prepare_test_data(data, train_data, percentages_columns):
         data.drop('Survived', axis=1, inplace=True)
 
 
+def drop_unused(data):
+    return data.drop(frozenset(COLUMNS), axis=1)
+
+
 def classify(test_values, train_values):
     classifier = AdaBoostClassifier(n_estimators=200)
     classifier = classifier.fit(train_values[0:, 1:], train_values[0:, 0])
@@ -164,12 +168,6 @@ def classify(test_values, train_values):
 
 
 def predict(test_data, train_data, percentages_columns):
-    unused_columns = (set(BASE_UNUSED_COLUMNS)
-                      | {x for x in percentages_columns if isinstance(x, str)})
-
-    def drop_unused(data):
-        return data.drop(unused_columns, axis=1)
-
     prepare_train_data(train_data, percentages_columns)
     prepare_test_data(test_data, train_data, percentages_columns)
     test_data['Survived'] = classify(drop_unused(test_data).values,
