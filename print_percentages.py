@@ -31,7 +31,7 @@ def percentages(data, max_count, columns):
 
 def parse_args():
     parser = ArgumentParser(
-        description='prints percentages tables for all combinations of base '
+        description='Prints percentages tables for all combinations of base '
                     'columns limited by max count')
     parser.add_argument('train', type=FileType('r'), default=stdin,
                         help='path to train data in csv file, stdin uses by '
