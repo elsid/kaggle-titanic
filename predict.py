@@ -16,21 +16,6 @@ from sys import stdin, stdout
 
 NAME_PATTERN = re.compile(r'^[^,]+, (?P<title>\w+)')
 
-COLUMNS = (
-    'Age',
-    'Cabin',
-    'Embarked',
-    'Fare',
-    'Name',
-    'Parch',
-    'PassengerId',
-    'Pclass',
-    'Sex',
-    'SibSp',
-    'Ticket',
-    'Title',
-)
-
 BASE_PERCENTAGES_COLUMNS = (
     'Pclass',
     'Sex',
@@ -139,18 +124,20 @@ def prepare_train_data(data, percentages_columns):
 
 
 def prepare_test_data(data, train_data, percentages_columns):
+    if 'Survived' in data.columns:
+        data.drop('Survived', axis=1, inplace=True)
     add_title(data)
+    columns = data.columns
     fill_age(data, train_data)
     fill_embarked(data, train_data)
     fill_pclass(data)
     fill_fare(data, train_data)
     add_percentages(data, train_data, percentages_columns)
-    if 'Survived' in data.columns:
-        data.drop('Survived', axis=1, inplace=True)
+    return columns
 
 
-def drop_unused(data, used_columns):
-    return data.drop(frozenset(COLUMNS) - frozenset(used_columns), axis=1)
+def drop_unused(data, unused_columns):
+    return data.drop(frozenset(unused_columns), axis=1)
 
 
 def classify(test_values, train_values):
@@ -161,10 +148,11 @@ def classify(test_values, train_values):
 
 def predict(test_data, train_data, percentages_columns, used_columns):
     prepare_train_data(train_data, percentages_columns)
-    prepare_test_data(test_data, train_data, percentages_columns)
+    columns = prepare_test_data(test_data, train_data, percentages_columns)
+    unused_columns = columns - used_columns
     test_data['Survived'] = classify(
-        drop_unused(test_data, used_columns).values,
-        drop_unused(train_data, used_columns).values)
+        drop_unused(test_data, unused_columns).values,
+        drop_unused(train_data, unused_columns).values)
 
 
 def get_prediction_precision(test_data, sample_data):
