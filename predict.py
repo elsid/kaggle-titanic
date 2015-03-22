@@ -165,11 +165,24 @@ def parse_config(stream):
 
 
 def parse_args():
-    parser = ArgumentParser()
-    parser.add_argument('config', type=FileType('r'))
-    parser.add_argument('train', type=FileType('r'))
-    parser.add_argument('test', type=FileType('r'), nargs='?', default=stdin)
-    parser.add_argument('-s', '--sample', type=FileType('r'))
+    parser = ArgumentParser(
+        description='Predicts survivors on Titanic ' + '=' * 78 + ' '
+                    'See http://www.kaggle.com/c/titanic-gettingStarted')
+    parser.add_argument('config', type=FileType('r'),
+                        help='path to config file in special yaml format, '
+                             'see config.yaml')
+    parser.add_argument('train', type=FileType('r'),
+                        help='path to file in csv format with information '
+                             'about passengers contains an indication of '
+                             'survival')
+    parser.add_argument('test', type=FileType('r'), nargs='?', default=stdin,
+                        help='path to file in csv format with information '
+                             'about passengers without indication of '
+                             'survival, by default uses stdin')
+    parser.add_argument('-s', '--sample', type=FileType('r'),
+                        help='path to file in csv format with information '
+                             'about passengers survival, if set script prints '
+                             'precision of prediction')
     return parser.parse_args()
 
 
