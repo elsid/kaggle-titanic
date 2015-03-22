@@ -40,14 +40,6 @@ BASE_PERCENTAGES_COLUMNS = (
     'Embarked',
 )
 
-PERCENTAGES_COLUMNS = (
-    'Pclass',
-    'Sex',
-    ('Sex', 'Pclass'),
-    ('Sex', 'SibSp', 'Parch'),
-    ('Sex', 'Title'),
-)
-
 
 def print_table(dictionary):
     for k, v in sorted(dictionary.items(), key=itemgetter(1)):
@@ -183,16 +175,34 @@ def get_prediction_precision(test_data, sample_data):
             / len(test_data.Survived.values))
 
 
-def percentages(data, max_count, percentages_columns):
+def percentages(data, max_count):
+    add_title(data)
+    fill_age(data)
+    fill_embarked(data)
+    fill_pclass(data)
+    fill_fare(data)
+
     def generate_columns():
         for n in range(1, max_count + 1):
             for column_ in permutations(BASE_PERCENTAGES_COLUMNS, n):
                 yield column_
 
-    prepare_train_data(data, percentages_columns)
     for column in generate_columns():
         print(column)
         print_table(survivors_percentage(data, column))
+
+
+class Config(object):
+    def __init__(self, data):
+        self.used_columns = (data['used_columns'] if 'used_columns' in data
+                             else [])
+        self.percentages_columns = (data['percentages_columns']
+                                    if 'percentages_columns' in data else [])
+
+
+def parse_config(stream):
+    data = yaml.load(stream)
+    return Config(data)
 
 
 def parse_args():
@@ -201,22 +211,20 @@ def parse_args():
     parser.add_argument('test', type=FileType('r'), nargs='?', default=stdin)
     parser.add_argument('-s', '--sample', type=FileType('r'))
     parser.add_argument('-p', '--print_percentages', type=int)
-    parser.add_argument('-c', '--percentages_columns', type=FileType('r'))
-    parser.add_argument('-u', '--use_column', dest='used_columns', type=str,
-                        nargs='+', default=tuple())
+    parser.add_argument('-c', '--config', type=FileType('r'))
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     train_data = read_csv(args.train, header=0)
-    percentages_columns = (yaml.load(args.percentages_columns)
-                           if args.percentages_columns else PERCENTAGES_COLUMNS)
     if args.print_percentages:
-        percentages(train_data, args.print_percentages, percentages_columns)
+        percentages(train_data, args.print_percentages)
     else:
+        config = parse_config(args.config)
         test_data = read_csv(args.test, header=0)
-        predict(test_data, train_data, percentages_columns, args.used_columns)
+        predict(test_data, train_data, config.percentages_columns,
+                config.used_columns)
         if args.sample:
             sample_data = read_csv(args.sample, header=0)
             print(get_prediction_precision(test_data, sample_data))

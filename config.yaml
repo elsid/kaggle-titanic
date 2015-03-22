@@ -1,4 +1,5 @@
 ---
+percentages_columns:
 - Pclass
 - Sex
 - [Sex, Pclass]
