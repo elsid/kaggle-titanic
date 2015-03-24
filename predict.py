@@ -98,8 +98,13 @@ def add_title(data):
     data['Title'] = [parse_title(name) for name in data.Name.values]
 
 
+def add_relatives_count(data):
+    data['RelativesCount'] = data['SibSp'] + data['Parch']
+
+
 def fill_train_data(data):
     add_title(data)
+    add_relatives_count(data)
     fill_age(data)
     fill_embarked(data)
     fill_pclass(data)
@@ -115,6 +120,7 @@ def prepare_test_data(data, train_data, percentages_columns):
     if 'Survived' in data.columns:
         data.drop('Survived', axis=1, inplace=True)
     add_title(data)
+    add_relatives_count(data)
     columns = data.columns
     fill_age(data, train_data)
     fill_embarked(data, train_data)
