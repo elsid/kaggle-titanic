@@ -183,6 +183,8 @@ def parse_args():
                         help='path to file in csv format with information '
                              'about passengers survival, if set script prints '
                              'precision of prediction')
+    parser.add_argument('-f', '--full', action='store_true',
+                        help='output csv file with all columns')
     return parser.parse_args()
 
 
@@ -197,8 +199,11 @@ def main():
         sample_data = read_csv(args.sample, header=0)
         print(get_prediction_precision(test_data, sample_data))
     else:
-        test_data.set_index('PassengerId').to_csv(stdout,
-                                                  columns=('Survived',))
+        if args.full:
+            test_data.set_index('PassengerId').to_csv(stdout)
+        else:
+            test_data.set_index('PassengerId').to_csv(stdout,
+                                                      columns=('Survived',))
 
 
 if __name__ == '__main__':
