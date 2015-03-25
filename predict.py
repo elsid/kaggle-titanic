@@ -161,7 +161,7 @@ def get_prediction_precision(test_data, sample_data):
 
 
 class Config(object):
-    def __init__(self, config_data, train_data, test_data):
+    def __init__(self, config_data, train_data, test_data, path=None):
         self.used_columns = (
             config_data['used_columns']
             if 'used_columns' in config_data else [])
@@ -170,6 +170,7 @@ class Config(object):
             if 'percentages_columns' in config_data else [])
         self.train_data = train_data
         self.test_data = test_data
+        self.path = path or []
         self.splits = [x for x in self._generate_splits(config_data) if x]
 
     def _generate_splits(self, config_data):
@@ -200,7 +201,8 @@ class Config(object):
                           self.train_data[column_name] == value].copy(),
                       self.test_data.loc[
                           self.test_data[column_name] == value].copy()
-                      if self.test_data is not None else None)
+                      if self.test_data is not None else None,
+                      self.path + [column_name, str(value)])
 
     def _on_value(self, column_name, value):
         column_dict = {
@@ -223,7 +225,8 @@ class Config(object):
                                   self.train_data[column_name] == value].copy(),
                               self.test_data.loc[
                                   self.test_data[column_name] == value].copy()
-                              if self.test_data is not None else None)
+                              if self.test_data is not None else None,
+                              self.path + [column_name, str(value)])
         else:
             values = unique_values & frozenset(value)
             if values:
@@ -233,7 +236,8 @@ class Config(object):
                               ].copy(),
                               self.test_data.loc[
                                   self.test_data[column_name].isin(values)
-                              ].copy() if self.test_data is not None else None)
+                              ].copy() if self.test_data is not None else None,
+                              self.path + [column_name, '%s' % values])
 
 
 def parse_config(stream, train_data, test_data=None):
