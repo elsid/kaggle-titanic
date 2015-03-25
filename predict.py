@@ -108,20 +108,20 @@ def fill_train_data(data):
     fill_fare(data)
 
 
+def fill_test_data(data, train_data):
+    fill_age(data, train_data)
+    fill_embarked(data, train_data)
+    fill_fare(data, train_data)
+
+
 def prepare_train_data(data, percentages_columns):
-    fill_train_data(data)
     add_percentages(data, data, percentages_columns)
 
 
 def prepare_test_data(data, train_data, percentages_columns):
     if 'Survived' in data.columns:
         data.drop('Survived', axis=1, inplace=True)
-    columns = data.columns
-    fill_age(data, train_data)
-    fill_embarked(data, train_data)
-    fill_fare(data, train_data)
     add_percentages(data, train_data, percentages_columns)
-    return columns
 
 
 def drop_unused(data, unused_columns):
@@ -140,10 +140,11 @@ def predict(config):
             predict(split)
         config.test_data = concat([x.test_data for x in config.splits])
     else:
+        columns = frozenset(config.test_data.columns) - frozenset(['Survived'])
         prepare_train_data(config.train_data, config.percentages_columns)
-        columns = prepare_test_data(config.test_data, config.train_data,
-                                    config.percentages_columns)
-        unused_columns = columns - config.used_columns
+        prepare_test_data(config.test_data, config.train_data,
+                          config.percentages_columns)
+        unused_columns = columns - frozenset(config.used_columns)
         config.test_data['Survived'] = classify(
             drop_unused(config.test_data, unused_columns).values,
             drop_unused(config.train_data, unused_columns).values)
@@ -169,7 +170,7 @@ class Config(object):
             if 'percentages_columns' in config_data else [])
         self.train_data = train_data
         self.test_data = test_data
-        self.splits = [split for split in self._generate_splits(config_data)]
+        self.splits = [x for x in self._generate_splits(config_data) if x]
 
     def _generate_splits(self, config_data):
         columns = frozenset(list(self.train_data.columns)
@@ -205,20 +206,28 @@ class Config(object):
             'used_columns': self.used_columns,
             'percentages_columns': self.percentages_columns,
         }
+        train_values = frozenset(unique(self.train_data[column_name]))
+        test_values = frozenset(unique(self.test_data[column_name]))
+        assert train_values >= test_values, (
+            'train data %s not subsets test data %s in %s' % (
+                train_values, test_values, column_name))
         if isinstance(value, str) or not isinstance(value, Iterable):
-            return Config(column_dict,
-                          self.train_data.loc[
-                              self.train_data[column_name] == value].copy(),
-                          self.test_data.loc[
-                              self.test_data[column_name] == value].copy())
+            if value in test_values:
+                return Config(column_dict,
+                              self.train_data.loc[
+                                  self.train_data[column_name] == value].copy(),
+                              self.test_data.loc[
+                                  self.test_data[column_name] == value].copy())
         else:
-            return Config(column_dict,
-                          self.train_data.loc[
-                              self.train_data[column_name].isin(
-                                  frozenset(value))].copy(),
-                          self.test_data.loc[
-                              self.test_data[column_name].isin(
-                                  frozenset(value))].copy())
+            values = test_values & frozenset(value)
+            if values:
+                return Config(column_dict,
+                              self.train_data.loc[
+                                  self.train_data[column_name].isin(values)
+                              ].copy(),
+                              self.test_data.loc[
+                                  self.test_data[column_name].isin(values)
+                              ].copy())
 
 
 def parse_config(stream, train_data, test_data):
@@ -255,6 +264,8 @@ def main():
     test_data = read_csv(args.test, header=0)
     add_columns(train_data)
     add_columns(test_data)
+    fill_train_data(train_data)
+    fill_test_data(test_data, train_data)
     config = parse_config(args.config, train_data, test_data)
     predict(config)
     if args.sample:
