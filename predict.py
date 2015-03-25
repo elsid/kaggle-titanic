@@ -234,6 +234,20 @@ def parse_config(stream, train_data, test_data):
     return Config(yaml.load(stream), train_data, test_data)
 
 
+def read_train_data(stream):
+    train_data = read_csv(stream, header=0)
+    add_columns(train_data)
+    fill_train_data(train_data)
+    return train_data
+
+
+def read_test_data(stream, train_data):
+    test_data = read_csv(stream, header=0)
+    add_columns(test_data)
+    fill_test_data(test_data, train_data)
+    return test_data
+
+
 def parse_args():
     parser = ArgumentParser(
         description='Predicts survivors on Titanic ' + '=' * 78 + ' '
@@ -260,12 +274,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    train_data = read_csv(args.train, header=0)
-    test_data = read_csv(args.test, header=0)
-    add_columns(train_data)
-    add_columns(test_data)
-    fill_train_data(train_data)
-    fill_test_data(test_data, train_data)
+    train_data = read_train_data(args.train)
+    test_data = read_test_data(args.test, train_data)
     config = parse_config(args.config, train_data, test_data)
     predict(config)
     if args.sample:
