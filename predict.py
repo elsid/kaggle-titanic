@@ -193,7 +193,7 @@ class Config(object):
         assert len(tuple(column_value.keys())) == 1
         value = tuple(column_value.keys())[0]
         column_dict = column_value[value]
-        if 'used_columns' in column_value:
+        if 'used_columns' in column_dict:
             column_dict['used_columns'] += self.used_columns
         else:
             column_dict['used_columns'] = self.used_columns
