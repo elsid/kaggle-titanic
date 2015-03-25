@@ -27,15 +27,10 @@ def fill_embarked(data, train_data=None):
         train_data.Embarked.dropna().mode().values)
 
 
-def fill_pclass(data):
-    data.loc[data.Pclass.isnull(), 'Pclass'] = 'unknown'
-
-
 def fill_fare(data, train_data=None):
     train_data = data if train_data is None else train_data
     median_fare = {
-        pclass: train_data[train_data.Pclass == pclass].Fare.dropna()
-                                                            .median() or 0
+        pclass: train_data[train_data.Pclass == pclass].Fare.dropna().median()
         for pclass in unique(train_data.Pclass)}
     for pclass, val in median_fare.items():
         data.loc[data.Fare.isnull() & (data.Pclass == pclass), 'Fare'] = val
@@ -110,7 +105,6 @@ def add_columns(data):
 def fill_train_data(data):
     fill_age(data)
     fill_embarked(data)
-    fill_pclass(data)
     fill_fare(data)
 
 
@@ -125,7 +119,6 @@ def prepare_test_data(data, train_data, percentages_columns):
     columns = data.columns
     fill_age(data, train_data)
     fill_embarked(data, train_data)
-    fill_pclass(data)
     fill_fare(data, train_data)
     add_percentages(data, train_data, percentages_columns)
     return columns
