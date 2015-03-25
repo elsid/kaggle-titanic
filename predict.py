@@ -12,7 +12,7 @@ from pandas import read_csv
 from sklearn.ensemble import AdaBoostClassifier
 from sys import stdin, stdout
 
-NAME_PATTERN = re.compile(r'^[^,]+, (?P<title>\w+)')
+NAME_PATTERN = re.compile(r'^[^,]+, (?P<title>\S+)')
 
 
 def fill_age(data, train_data=None):
