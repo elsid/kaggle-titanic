@@ -187,7 +187,7 @@ class Config(object):
                     if isinstance(column_value, dict):
                         yield self._on_dict(key, column_value)
                     else:
-                        yield self._on_list(key, column_value)
+                        yield self._on_value(key, column_value)
 
     def _on_dict(self, column_name, column_value):
         assert len(tuple(column_value.keys())) == 1
@@ -207,7 +207,7 @@ class Config(object):
                       self.test_data.loc[
                           self.test_data[column_name] == value].copy())
 
-    def _on_list(self, column_name, value):
+    def _on_value(self, column_name, value):
         column_dict = {
             'used_columns': self.used_columns,
             'percentages_columns': self.percentages_columns,
