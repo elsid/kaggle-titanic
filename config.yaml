@@ -1,5 +1,8 @@
 ---
+Sex:
+    - male
+    - female
 percentages_columns:
-- [Sex, Pclass]
-- [Sex, SibSp, Parch]
-- [Sex, Title]
+- Pclass
+- [SibSp, Parch]
+- Title

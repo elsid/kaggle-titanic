@@ -8,7 +8,7 @@ from operator import itemgetter
 from pandas import read_csv
 from sys import stdin
 
-from predict import fill_train_data, survivors_percentage
+from predict import fill_train_data, survivors_percentage, add_columns
 
 
 def print_table(dictionary):
@@ -17,6 +17,7 @@ def print_table(dictionary):
 
 
 def percentages(data, max_count, columns):
+    add_columns(data)
     fill_train_data(data)
 
     def generate_columns():

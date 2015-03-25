@@ -5,10 +5,10 @@ import re
 import yaml
 
 from argparse import ArgumentParser, FileType
-from collections import Counter
+from collections import Counter, Iterable
 from functools import reduce
 from numpy import unique
-from pandas import read_csv
+from pandas import read_csv, concat
 from sklearn.ensemble import AdaBoostClassifier
 from sys import stdin, stdout
 
@@ -102,9 +102,12 @@ def add_relatives_count(data):
     data['RelativesCount'] = data['SibSp'] + data['Parch']
 
 
-def fill_train_data(data):
+def add_columns(data):
     add_title(data)
     add_relatives_count(data)
+
+
+def fill_train_data(data):
     fill_age(data)
     fill_embarked(data)
     fill_pclass(data)
@@ -119,8 +122,6 @@ def prepare_train_data(data, percentages_columns):
 def prepare_test_data(data, train_data, percentages_columns):
     if 'Survived' in data.columns:
         data.drop('Survived', axis=1, inplace=True)
-    add_title(data)
-    add_relatives_count(data)
     columns = data.columns
     fill_age(data, train_data)
     fill_embarked(data, train_data)
@@ -140,34 +141,95 @@ def classify(test_values, train_values):
     return classifier.predict(test_values).astype(int)
 
 
-def predict(test_data, train_data, percentages_columns, used_columns):
-    prepare_train_data(train_data, percentages_columns)
-    columns = prepare_test_data(test_data, train_data, percentages_columns)
-    unused_columns = columns - used_columns
-    test_data['Survived'] = classify(
-        drop_unused(test_data, unused_columns).values,
-        drop_unused(train_data, unused_columns).values)
+def predict(config):
+    if config.splits:
+        for split in config.splits:
+            predict(split)
+        config.test_data = concat([x.test_data for x in config.splits])
+    else:
+        prepare_train_data(config.train_data, config.percentages_columns)
+        columns = prepare_test_data(config.test_data, config.train_data,
+                                    config.percentages_columns)
+        unused_columns = columns - config.used_columns
+        config.test_data['Survived'] = classify(
+            drop_unused(config.test_data, unused_columns).values,
+            drop_unused(config.train_data, unused_columns).values)
 
 
 def get_prediction_precision(test_data, sample_data):
-    assert (tuple(x for x in test_data.PassengerId.values)
-            == tuple(x for x in sample_data.PassengerId.values))
+    test_data = test_data.sort('PassengerId')
+    sample_data = sample_data.sort('PassengerId')
+    assert (tuple(test_data.PassengerId.values)
+            == tuple(sample_data.PassengerId.values))
     return (sum(p == s for p, s in zip(test_data.Survived.values,
                                        sample_data.Survived.values))
             / len(test_data.Survived.values))
 
 
 class Config(object):
-    def __init__(self, data):
-        self.used_columns = (data['used_columns'] if 'used_columns' in data
-                             else [])
-        self.percentages_columns = (data['percentages_columns']
-                                    if 'percentages_columns' in data else [])
+    def __init__(self, config_data, train_data, test_data):
+        self.used_columns = (
+            config_data['used_columns']
+            if 'used_columns' in config_data else [])
+        self.percentages_columns = (
+            config_data['percentages_columns']
+            if 'percentages_columns' in config_data else [])
+        self.train_data = train_data
+        self.test_data = test_data
+        self.splits = [split for split in self._generate_splits(config_data)]
+
+    def _generate_splits(self, config_data):
+        columns = frozenset(list(self.train_data.columns)
+                            + ['Title', 'RelativesCount'])
+        for key, value in config_data.items():
+            if key in columns:
+                for column_value in value:
+                    if isinstance(column_value, dict):
+                        yield self._on_dict(key, column_value)
+                    else:
+                        yield self._on_list(key, column_value)
+
+    def _on_dict(self, column_name, column_value):
+        assert len(tuple(column_value.keys())) == 1
+        value = tuple(column_value.keys())[0]
+        column_dict = column_value[value]
+        if 'used_columns' in column_value:
+            column_dict['used_columns'] += self.used_columns
+        else:
+            column_dict['used_columns'] = self.used_columns
+        if 'percentages_columns' in column_dict:
+            column_dict['percentages_columns'] += self.percentages_columns
+        else:
+            column_dict['percentages_columns'] = self.percentages_columns
+        return Config(column_dict,
+                      self.train_data.loc[
+                          self.train_data[column_name] == value].copy(),
+                      self.test_data.loc[
+                          self.test_data[column_name] == value].copy())
+
+    def _on_list(self, column_name, value):
+        column_dict = {
+            'used_columns': self.used_columns,
+            'percentages_columns': self.percentages_columns,
+        }
+        if isinstance(value, str) or not isinstance(value, Iterable):
+            return Config(column_dict,
+                          self.train_data.loc[
+                              self.train_data[column_name] == value].copy(),
+                          self.test_data.loc[
+                              self.test_data[column_name] == value].copy())
+        else:
+            return Config(column_dict,
+                          self.train_data.loc[
+                              self.train_data[column_name].isin(
+                                  frozenset(value))].copy(),
+                          self.test_data.loc[
+                              self.test_data[column_name].isin(
+                                  frozenset(value))].copy())
 
 
-def parse_config(stream):
-    data = yaml.load(stream)
-    return Config(data)
+def parse_config(stream, train_data, test_data):
+    return Config(yaml.load(stream), train_data, test_data)
 
 
 def parse_args():
@@ -197,19 +259,20 @@ def parse_args():
 def main():
     args = parse_args()
     train_data = read_csv(args.train, header=0)
-    config = parse_config(args.config)
     test_data = read_csv(args.test, header=0)
-    predict(test_data, train_data, config.percentages_columns,
-            config.used_columns)
+    add_columns(train_data)
+    add_columns(test_data)
+    config = parse_config(args.config, train_data, test_data)
+    predict(config)
     if args.sample:
         sample_data = read_csv(args.sample, header=0)
-        print(get_prediction_precision(test_data, sample_data))
+        print(get_prediction_precision(config.test_data, sample_data))
     else:
+        result = config.test_data.sort('PassengerId').set_index('PassengerId')
         if args.full:
-            test_data.set_index('PassengerId').to_csv(stdout)
+            result.to_csv(stdout)
         else:
-            test_data.set_index('PassengerId').to_csv(stdout,
-                                                      columns=('Survived',))
+            result.to_csv(stdout, columns=('Survived',))
 
 
 if __name__ == '__main__':
