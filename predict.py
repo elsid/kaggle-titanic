@@ -199,27 +199,33 @@ class Config(object):
                       self.train_data.loc[
                           self.train_data[column_name] == value].copy(),
                       self.test_data.loc[
-                          self.test_data[column_name] == value].copy())
+                          self.test_data[column_name] == value].copy()
+                      if self.test_data is not None else None)
 
     def _on_value(self, column_name, value):
         column_dict = {
             'used_columns': self.used_columns,
             'percentages_columns': self.percentages_columns,
         }
-        train_values = frozenset(unique(self.train_data[column_name]))
-        test_values = frozenset(unique(self.test_data[column_name]))
-        assert train_values >= test_values, (
-            'train data %s not subsets test data %s in %s' % (
-                train_values, test_values, column_name))
+        if self.test_data is not None:
+            train_values = frozenset(unique(self.train_data[column_name]))
+            test_values = frozenset(unique(self.test_data[column_name]))
+            assert train_values >= test_values, (
+                'train data %s not subsets test data %s in %s' % (
+                    train_values, test_values, column_name))
+            unique_values = test_values
+        else:
+            unique_values = frozenset(unique(self.train_data[column_name]))
         if isinstance(value, str) or not isinstance(value, Iterable):
-            if value in test_values:
+            if value in unique_values:
                 return Config(column_dict,
                               self.train_data.loc[
                                   self.train_data[column_name] == value].copy(),
                               self.test_data.loc[
-                                  self.test_data[column_name] == value].copy())
+                                  self.test_data[column_name] == value].copy()
+                              if self.test_data is not None else None)
         else:
-            values = test_values & frozenset(value)
+            values = unique_values & frozenset(value)
             if values:
                 return Config(column_dict,
                               self.train_data.loc[
@@ -227,10 +233,10 @@ class Config(object):
                               ].copy(),
                               self.test_data.loc[
                                   self.test_data[column_name].isin(values)
-                              ].copy())
+                              ].copy() if self.test_data is not None else None)
 
 
-def parse_config(stream, train_data, test_data):
+def parse_config(stream, train_data, test_data=None):
     return Config(yaml.load(stream), train_data, test_data)
 
 
