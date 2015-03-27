@@ -1,8 +1,20 @@
 ---
 Sex:
-    - male
-    - female
-percentages_columns:
-- Pclass
-- [SibSp, Parch]
-- Title
+    - male:
+        percentages_columns:
+        - Pclass
+        - [SibSp, Parch]
+        - Title
+    - female:
+        Pclass:
+            - 1:
+                percentages_columns:
+                - Sex
+            - 2:
+                percentages_columns:
+                - Sex
+            - 3:
+                percentages_columns:
+                - [SibSp, Parch]
+                - Fare
+                - Embarked
