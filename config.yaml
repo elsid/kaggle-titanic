@@ -1,10 +1,26 @@
 ---
 Sex:
     - male:
-        percentages_columns:
-        - Pclass
-        - [SibSp, Parch]
-        - Title
+        Title:
+            - Col.:
+                percentages_columns:
+                - Age
+                - Fare
+            - Dr.:
+                percentages_columns:
+                - Age
+                - Fare
+            - Master.:
+                percentages_columns:
+                - Pclass
+                - [SibSp, Parch]
+            - Mr.:
+                percentages_columns:
+                - Pclass
+                - [SibSp, Parch]
+            - Rev.:
+                percentages_columns:
+                - Title
     - female:
         Pclass:
             - 1:
